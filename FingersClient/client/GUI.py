@@ -18,7 +18,6 @@ class Template(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)   
         
-        self.sdlkdl = 0
         
         self.parent = parent        
         self.parent.title("Fingers game")  
