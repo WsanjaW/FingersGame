@@ -8,6 +8,8 @@ Created on Jul 5, 2013
 from Tkinter import Tk, Frame, Label, BOTH, Button, StringVar, Entry, Text, LEFT, RIGHT, BOTTOM, E, N,CENTER,NW,W, S, END
 import tkMessageBox
 import tkFont
+#PROVERI zasto nece from!!!!!
+import ChatClient
 
 class Template(Frame):
     '''
@@ -15,7 +17,8 @@ class Template(Frame):
     '''
     def __init__(self, parent):
         Frame.__init__(self, parent)   
-         
+        
+        
         self.parent = parent        
         self.parent.title("Fingers game")  
         self.pack(fill=BOTH, expand=1)
@@ -46,13 +49,15 @@ class ChatWellcameForm(Template):
     
     def openNetworkForm(self):
         '''
-        Opens form for network game
+        Opens form for network game end connects to server
         '''
-        self.parent.destroy()
+
+        self.parent.destroy() 
         root = Tk()
         ex = ChatNetworkForm(root)
         root.geometry("300x250+300+300")
         root.mainloop() 
+       
         
 class ChatNetworkForm(Template):
     '''
@@ -88,12 +93,16 @@ class ChatNetworkForm(Template):
         
         if not self.name.get() == '':    
             self.parent.destroy()
+            
+            
             root = Tk()
             ChatMainForm(root,self.name.get())
             root.geometry("500x400+300+300")
             root.mainloop() 
         else:
             tkMessageBox.showwarning("Fingers","Please enter name")
+            
+        
         
 class ChatMainForm(Template):
     '''
@@ -102,9 +111,17 @@ class ChatMainForm(Template):
     '''
   
     def __init__(self, parent,name):
-        Template.__init__(self, parent)    
+        Template.__init__(self, parent)  
+        
+        self.client = ChatClient.ChatClient()
+        #where to put try block here or in connect method
+        self.client.connect_to_server()
+          
         self.name = name
-        self.parent = parent        
+        
+        self.client.send_message(self.name+'\n')
+        
+        self.parent = parent       
         self.initUI()
         
     def initUI(self):
@@ -123,5 +140,17 @@ class ChatMainForm(Template):
         self.messageText =Entry(self, textvariable=self.message, width=35)
         self.messageText.place(x=270, y=275)
         
-        self.nameButton = Button(self, text="Continue", width=30)
+        self.nameButton = Button(self, text="Continue", width=30, command=self.send_message)
         self.nameButton.place(x=270, y=300)
+        
+    def send_message(self):
+        self.client.send_message(self.message)
+        self.message.set('')
+            
+        
+        
+        
+        
+        
+        
+        
