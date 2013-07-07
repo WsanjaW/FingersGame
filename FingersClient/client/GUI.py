@@ -10,6 +10,8 @@ import tkMessageBox
 import tkFont
 #PROVERI zasto nece from!!!!!
 import ChatClient
+import thread
+import time
 
 class Template(Frame):
     '''
@@ -111,14 +113,27 @@ class ChatMainForm(Template):
     '''
   
     def __init__(self, parent,name):
+        '''
+        Initialize all gui components...
+        
+        parent represents root of tk window
+        name is  name that client entered
+        
+        Creates instance of client class and starts thread for receiving messages
+        '''
         Template.__init__(self, parent)  
         
         self.client = ChatClient.ChatClient()
         #where to put try block here or in connect method
         self.client.connect_to_server()
           
+        self.end = False #for stopping receiving thread 
         self.name = name
         
+        #start new thread
+        self.thread=thread.start_new_thread( self.receive_server_messages, (1,) )#!!!doesn't work without second argument
+        
+        #send first message with name
         self.client.send_message(self.name+'\n')
         
         self.parent = parent       
@@ -134,7 +149,7 @@ class ChatMainForm(Template):
 
         self.messageDispley = Text(self,font=tkFont.Font(family="Calibri",size=10),width=30,height=15)
         self.messageDispley.place(x=270, y=40)
-        self.messageDispley.insert(END,self.name)
+        self.messageDispley.insert(END,"Welcome...\n")
         
         self.message = StringVar()
         self.messageText =Entry(self, textvariable=self.message, width=35)
@@ -144,10 +159,32 @@ class ChatMainForm(Template):
         self.nameButton.place(x=270, y=300)
         
     def send_message(self):
-        self.client.send_message(self.message)
-        self.message.set('')
-            
+        '''
+        sends message to server
+        if message is 'Bye' ends program
+         
+        '''
+        self.client.send_message(self.message.get())
         
+        if self.message.get() =='Bye':
+            print 'sss'
+            self.client.comSocket.close
+            self.end = True
+            self.parent.destroy()   
+                     
+        self.message.set('')     
+    def receive_server_messages(self,id):
+        '''
+        receives messages while main thread is running
+        '''
+       
+        while not self.end:
+            try:
+                mes = self.client.comSocket.recv(1024)
+                self.messageDispley.insert(END,mes) 
+            except:
+                
+                print "Error"
         
         
         
