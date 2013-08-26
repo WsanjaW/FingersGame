@@ -71,10 +71,10 @@ class ClientHandler extends Thread {
 //Notify all people in chatroom (including new arrival)
 //of the new arrival...
         
-//        ChatMessage msg = new ChatMessage(chatName + "has entered the chatroom!");
-//        XStream xstream = new XStream(new StaxDriver());
-//		String xml = xstream.toXML(msg);
-//		xstream = null; //promeni da ne bude lokalna promenjiva
+        ChatMessage msg = new ChatMessage(chatName + " has entered the chatroom!");
+        XStream xstream = new XStream(new StaxDriver());
+        String xml = xstream.toXML(msg);
+        //xstream = null; //promeni da ne bude lokalna promenjiva
 		
 		Vector<String> listaIgara = new Vector<String>();
 		listaIgara.add("SanjasGame");
@@ -82,7 +82,12 @@ class ClientHandler extends Thread {
 		ListOfGames msg1 = new ListOfGames(listaIgara);
 		String xml1 = xstream.toXML(msg1);
         
+		broadcast(xml);
+		for (int i = 0; i < 700000; i++) {
+			
+		}
 		broadcast(xml1);
+		
     }
 
     public void run() {
@@ -93,7 +98,19 @@ class ClientHandler extends Thread {
             received = input.nextLine();
 //Send message to all users, prepending
 //the sender's nickname...
-            broadcast(chatName + ": " + received);
+            
+
+            if (xstream.fromXML(received) instanceof ChatMessage) {
+				
+            	ChatMessage newMesg = (ChatMessage)xstream.fromXML(received);
+				newMesg.setMessage(chatName+": "+newMesg.getMessage());
+				String xml = xstream.toXML(newMesg);
+				broadcast(xml);
+				
+			} else {
+
+			}
+            
 //Repeat above until 'Bye' sent by client...
         } while (!received.equals("Bye"));
         try {
