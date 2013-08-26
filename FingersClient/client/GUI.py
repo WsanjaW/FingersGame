@@ -170,7 +170,7 @@ class ChatMainForm(Template):
         self.messageText.place(x=270, y=275)
         
         #send chat massage
-        self.nameButton = Button(self, text="Continue", width=26, command=self.send_message)
+        self.nameButton = Button(self, text="Continue", width=26, command=self.send_chat_message)
         self.nameButton.place(x=270, y=300)
         
         #lists players in specific game
@@ -205,16 +205,23 @@ class ChatMainForm(Template):
         self.createGameButton.place_forget()
         self.gameList.place_forget()
         self.nameText2.place_forget()
+        
+        
        
         
-           
-    def send_message(self):
+         
+    def send_chat_message(self):
         '''
-        sends message to server
-        if message is 'Bye' ends program
+        sends chat message to server
+        if message is 'Bye' ends program**to be changed**
          
         '''
-        self.client.send_message(self.message.get())
+        
+        # creating xml document to be send
+        root2 = etree.Element("ChatMessage")
+        etree.SubElement(root2, "message").text = self.message.get()
+        
+        self.client.send_message(etree.tostring(root2))
         
         if self.message.get() =='Bye':
             print 'sss'
@@ -222,7 +229,15 @@ class ChatMainForm(Template):
             self.end = True
             self.parent.destroy()   
                      
-        self.message.set('')     
+        self.message.set('')   
+        
+    def send_message(self):
+        '''
+        sends message to server
+        if message is 'Bye' ends program
+         
+        '''
+          
         
     
     def process_message(self):
@@ -232,9 +247,10 @@ class ChatMainForm(Template):
         for specific type of messges
         '''
         messageType = self.root.tag
-        if messageType == "chatMessage":
-            self.messageDispley.insert(END,self.root.text)
-        if messageType == "listOfGames":
+        print '****', self.root[0].tag
+        if messageType == "ChatMessage":
+            self.messageDispley.insert(END,self.root[0].text+'\n')
+        elif messageType == "ListOfGames":
             #****Mora posebna metoda koja nema parametre jedino tako radi***
             self.list_all_games()
         else:
@@ -247,9 +263,11 @@ class ChatMainForm(Template):
         '''
         #******Ovov nekad radi nekad ne*********
         lis = []
-        for el in iter(self.root):
+        print self.root[0]
+        for el in iter(self.root[0]):
             lis.append(el.text)
        
+        self.gameList.delete(0, END)
         for e in lis:
             #t = e.text
             self.gameList.insert(END,e)
@@ -265,6 +283,7 @@ class ChatMainForm(Template):
             try:
                 mes = self.client.comSocket.recv(1024)
                 # http://lxml.de/tutorial.html
+                print mes + '*****'
                 self.root = etree.fromstring(mes)  
                 self.process_message()
                
