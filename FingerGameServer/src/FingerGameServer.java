@@ -4,6 +4,10 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.xml.StaxDriver;
+
+
 public class FingerGameServer {
 
     private static ServerSocket serverSocket;
@@ -44,6 +48,7 @@ class ClientHandler extends Thread {
     private Vector<Socket> allUsers;
     private Scanner input;
     private PrintWriter output;
+    XStream xstream;
 
     public ClientHandler(Socket chatSocket,
             Vector<Socket> chatVector) {
@@ -51,6 +56,7 @@ class ClientHandler extends Thread {
 //of users...
         userSocket = chatSocket;
         allUsers = chatVector;
+        xstream = new XStream(new StaxDriver());
         try {
             input = new Scanner(userSocket.getInputStream());
             output = new PrintWriter(
@@ -64,7 +70,19 @@ class ClientHandler extends Thread {
         allUsers.add(userSocket);
 //Notify all people in chatroom (including new arrival)
 //of the new arrival...
-        broadcast("<listOfGames><game>TEKST</game></listOfGames>");
+        
+//        ChatMessage msg = new ChatMessage(chatName + "has entered the chatroom!");
+//        XStream xstream = new XStream(new StaxDriver());
+//		String xml = xstream.toXML(msg);
+//		xstream = null; //promeni da ne bude lokalna promenjiva
+		
+		Vector<String> listaIgara = new Vector<String>();
+		listaIgara.add("SanjasGame");
+		listaIgara.add("BuhasGame");
+		ListOfGames msg1 = new ListOfGames(listaIgara);
+		String xml1 = xstream.toXML(msg1);
+        
+		broadcast(xml1);
     }
 
     public void run() {
