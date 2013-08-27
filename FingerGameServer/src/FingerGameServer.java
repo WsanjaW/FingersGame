@@ -108,12 +108,21 @@ class ClientHandler extends Thread {
 
             //Adds new game into gameMap and broadcast new state 
             if(received.equals("Create game")){
-            	for (String key : gameMap.keySet()){
-            		if(key.equals(chatName+"sGame")){
-            			//TODO implement unique key
-            		}
-            	}
+            	
             	String gameName = chatName+"sGame";
+            	boolean unique = false;
+            	int i = 1;
+            	//checks if game name is unique
+                while (!unique) {
+					if (!gameMap.containsKey(gameName)) {
+						unique = true;
+					}
+					else {
+						gameName = chatName + i + "sGame";
+						i++;
+					}
+				}
+            	            	
             	player.setGameName(gameName);
             	gameMap.put(gameName, new Vector<Player>());
             	gameMap.get(gameName).add(player);
