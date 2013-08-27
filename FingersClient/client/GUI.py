@@ -170,7 +170,7 @@ class ChatMainForm(Template):
         self.messageText.place(x=270, y=275)
         
         #send chat massage
-        self.nameButton = Button(self, text="Continue", width=26, command=self.send_chat_message)
+        self.nameButton = Button(self, text="Send", width=26, command=self.send_chat_message)
         self.nameButton.place(x=270, y=300)
         
         #lists players in specific game
@@ -182,7 +182,7 @@ class ChatMainForm(Template):
         self.gameList.place(x=50, y=30)
 
         #join created game
-        self.joinGameButton = Button(self,text="Join game",width=15)
+        self.joinGameButton = Button(self,text="Join game",width=15, command=self.send_join_message)
         self.joinGameButton.place(x=50, y=230)
         
         #start created game
@@ -195,6 +195,29 @@ class ChatMainForm(Template):
         
        
         
+    def send_join_message(self):
+        '''
+        Hides 'create new game' and 'Join game'  buttons and 
+        shows 'Players list' listbox.
+        Send message with selected game to server
+        '''
+        self.joinGameButton.place_forget()
+        self.createGameButton.place_forget()
+        self.gameList.place_forget()
+        self.nameText2.place_forget()
+        self.startGameButton.place_forget()
+        
+        items = self.gameList.curselection()
+          
+        
+        # creating xml document to be send
+        root2 = etree.Element("JoinGame")
+        ge = etree.SubElement(root2, "game").text =  self.gameList.get(items[0])  
+        
+        self.client.send_message(etree.tostring(root2))
+        
+           
+        
     
     def create_new_game(self):
         '''
@@ -206,8 +229,7 @@ class ChatMainForm(Template):
         self.gameList.place_forget()
         self.nameText2.place_forget()
         
-        
-       
+        self.client.send_message("Create game")
         
          
     def send_chat_message(self):
@@ -252,11 +274,14 @@ class ChatMainForm(Template):
             self.messageDispley.insert(END,self.root[0].text+'\n')
         elif messageType == "ListOfGames":
             #****Mora posebna metoda koja nema parametre jedino tako radi***
-            self.list_all_games()
+            self.list_all_games(self.gameList)
+        elif messageType == "ListOfPlayers":
+            self.list_all_games(self.playersList)
+            
         else:
             print "Neka greska"
         
-    def list_all_games(self):
+    def list_all_games(self,listBox):
         '''
         Reads all <game> elements from xml
         and shows them in gameList listbox
@@ -267,10 +292,10 @@ class ChatMainForm(Template):
         for el in iter(self.root[0]):
             lis.append(el.text)
        
-        self.gameList.delete(0, END)
+        listBox.delete(0, END)
         for e in lis:
             #t = e.text
-            self.gameList.insert(END,e)
+            listBox.insert(END,e)
         
     
     def receive_server_messages(self,id):
