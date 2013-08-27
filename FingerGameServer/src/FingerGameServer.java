@@ -55,6 +55,7 @@ class ClientHandler extends Thread {
     private Scanner input;
     private PrintWriter output;
     private XStream xstream;
+    private Player player;
     Map<String, Vector<Player>> gameMap;
     
 
@@ -64,7 +65,8 @@ class ClientHandler extends Thread {
 //of users...
         userSocket = chatSocket;
         allUsers = chatVector;
-        gameMap = map;
+        gameMap = map; 
+       
         xstream = new XStream(new StaxDriver());
        
         try {
@@ -77,6 +79,7 @@ class ClientHandler extends Thread {
 //Connecting user must send chat nickname as first
 //transmission...
         chatName = input.nextLine();
+        player = new Player(chatName, userSocket);
         allUsers.add(userSocket);
 //Notify all people in chatroom (including new arrival)
 //of the new arrival...
@@ -111,8 +114,9 @@ class ClientHandler extends Thread {
             		}
             	}
             	String gameName = chatName+"sGame";
+            	player.setGameName(gameName);
             	gameMap.put(gameName, new Vector<Player>());
-            	gameMap.get(gameName).add(new Player(chatName,userSocket));
+            	gameMap.get(gameName).add(player);
             	allUsers.remove(userSocket);
             	
             	ChatMessage msg = new ChatMessage("You have succesfully created the game!");
@@ -128,16 +132,22 @@ class ClientHandler extends Thread {
             	ChatMessage newMesg = (ChatMessage)xstream.fromXML(received);
 				newMesg.setMessage(chatName+": "+newMesg.getMessage());
 				String xml = xstream.toXML(newMesg);
-				
-				broadcast(xml,allUsers); //TODO check whether user belogs to allUsers or in gameMap
+				if(player.getGameName() == null){
+					broadcast(xml,allUsers); //TODO check whether user belogs to allUsers or in gameMap
+				}
+				else{
+					broadcast(xml,getSocketVector(gameMap.get(player.getGameName())));
+				}
 				
 			} 
             else if(xstream.fromXML(received) instanceof JoinGame) {
             	
             	JoinGame joinMessage = (JoinGame)xstream.fromXML(received);
             	String selectedGame = joinMessage.getGame();
-            	gameMap.get(selectedGame).add(new Player(chatName,userSocket));
+            	player.setGameName(selectedGame);
+            	gameMap.get(selectedGame).add(player);
             	allUsers.remove(userSocket);
+            	
             	ListOfPlayers players = new ListOfPlayers(getPlayerNames(gameMap.get(selectedGame)));
             	String XMLNames = xstream.toXML(players);
             	broadcast(XMLNames, getSocketVector(gameMap.get(selectedGame)));

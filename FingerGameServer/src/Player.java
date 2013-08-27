@@ -4,6 +4,7 @@ import java.net.Socket;
 public class Player {
 	private String name;
 	private Socket socket;
+	private String gameName;
 	
 	public Player(String name, Socket socket){
 		this.name = name;
@@ -36,6 +37,20 @@ public class Player {
 	 */
 	public void setSocket(Socket socket) {
 		this.socket = socket;
+	}
+
+	/**
+	 * @return the gameName
+	 */
+	public String getGameName() {
+		return gameName;
+	}
+
+	/**
+	 * @param gameName the gameName to set
+	 */
+	public void setGameName(String gameName) {
+		this.gameName = gameName;
 	}
 	
 }
