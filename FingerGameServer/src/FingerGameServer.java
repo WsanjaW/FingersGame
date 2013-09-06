@@ -106,6 +106,7 @@ class ClientHandler extends Thread {
         	//the socket's input stream...
             received = input.nextLine();
 
+            //CREATE GAME
             //Adds new game into gameMap and broadcast new state 
             if(received.equals("Create game")){
             	
@@ -131,35 +132,51 @@ class ClientHandler extends Thread {
             	ChatMessage msg = new ChatMessage("You have succesfully created the game!");
             	
             	broadcast(xstream.toXML(msg), getSocketVector(gameMap.get(gameName)));
+            	
+            	//send list of players just for player that created the game
+            	ListOfPlayers players = new ListOfPlayers(getPlayerNames(gameMap.get(gameName)));
+            	sendMessage(xstream.toXML(players),player.getSocket());
             	broadcast(createListOfGameMessage(),allUsers);
             	
             	
             }
-
+            //CHAT MESSAGE
             else if (xstream.fromXML(received) instanceof ChatMessage) {
 				
             	ChatMessage newMesg = (ChatMessage)xstream.fromXML(received);
 				newMesg.setMessage(chatName+": "+newMesg.getMessage());
 				String xml = xstream.toXML(newMesg);
 				if(player.getGameName() == null){
-					broadcast(xml,allUsers); //TODO check whether user belogs to allUsers or in gameMap
+					broadcast(xml,allUsers); //DONE check whether user belongs to allUsers or in gameMap
 				}
 				else{
 					broadcast(xml,getSocketVector(gameMap.get(player.getGameName())));
 				}
 				
 			} 
+            //JOIN GAME
             else if(xstream.fromXML(received) instanceof JoinGame) {
             	
             	JoinGame joinMessage = (JoinGame)xstream.fromXML(received);
             	String selectedGame = joinMessage.getGame();
-            	player.setGameName(selectedGame);
-            	gameMap.get(selectedGame).add(player);
-            	allUsers.remove(userSocket);
+            	//checks if there is less than four players in selected game
+            	if (gameMap.get(selectedGame).size() == 4) {
+            		
+            		//if game is full send message 
+            		ChatMessage msg = new ChatMessage("Unable to join, game is full.");
+            		sendMessage(xstream.toXML(msg), player.getSocket());
+					
+				} else {
+					player.setGameName(selectedGame);
+	            	gameMap.get(selectedGame).add(player);
+	            	allUsers.remove(userSocket);
+	            	
+	            	ListOfPlayers players = new ListOfPlayers(getPlayerNames(gameMap.get(selectedGame)));
+	            	String XMLNames = xstream.toXML(players);
+	            	broadcast(XMLNames, getSocketVector(gameMap.get(selectedGame)));
+				}
             	
-            	ListOfPlayers players = new ListOfPlayers(getPlayerNames(gameMap.get(selectedGame)));
-            	String XMLNames = xstream.toXML(players);
-            	broadcast(XMLNames, getSocketVector(gameMap.get(selectedGame)));
+            	
             	
             	
             	
@@ -205,7 +222,7 @@ class ClientHandler extends Thread {
 
 	//added additional parameter to handle sending messages to different groups of users 
     public void broadcast(String chat, Vector<Socket> users) {
-        Socket socket;
+        
         PrintWriter output;
         for (Socket userSocket : users) {
             try {
@@ -218,7 +235,18 @@ class ClientHandler extends Thread {
             }
         }
     }
-    
+    //sends message to one user
+    public void sendMessage(String mes, Socket user){
+    	try {
+            output = new PrintWriter(
+                    userSocket.getOutputStream(), true);
+            output.println(mes);
+        } catch (IOException ioEx) {
+            allUsers.remove(userSocket);
+            ioEx.printStackTrace();
+        }
+    }
+    //from gameMap creates list of game names
     public String createListOfGameMessage(){
     	
     	Vector<String> games = new Vector<String>();
