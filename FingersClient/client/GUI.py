@@ -14,7 +14,9 @@ import thread
 import time
 from lxml import etree
 import traceback
+import threading
 
+ 
 class Template(Frame):
     '''
     Template for all gui classes
@@ -201,20 +203,29 @@ class ChatMainForm(Template):
         shows 'Players list' listbox.
         Send message with selected game to server
         '''
-        self.joinGameButton.place_forget()
-        self.createGameButton.place_forget()
-        self.gameList.place_forget()
-        self.nameText2.place_forget()
-        self.startGameButton.place_forget()
+        #first we think you can join
+        self.canJoin = True
         
-        items = self.gameList.curselection()
-          
+        items = self.gameList.curselection()  
         
         # creating xml document to be send
         root2 = etree.Element("JoinGame")
         ge = etree.SubElement(root2, "game").text =  self.gameList.get(items[0])  
         
         self.client.send_message(etree.tostring(root2))
+        
+        #first receive_server_messages thread needs to finish processing message from server        
+        self.event.wait()
+        
+        #if we don't receive message from server we hide fields 
+        if self.canJoin:
+            self.joinGameButton.place_forget()
+            self.createGameButton.place_forget()
+            self.gameList.place_forget()
+            self.nameText2.place_forget()
+            self.startGameButton.place_forget()
+        
+        
         
            
         
@@ -272,6 +283,9 @@ class ChatMainForm(Template):
         print '****', self.root[0].tag
         if messageType == "ChatMessage":
             self.messageDispley.insert(END,self.root[0].text+'\n')
+            # if game is full we receive message and set shared object canJoin to false 
+            if self.root[0].text.startswith('Unable to join'):
+                self.canJoin = False
         elif messageType == "ListOfGames":
             #****Mora posebna metoda koja nema parametre jedino tako radi***
             self.list_all_games(self.gameList)
@@ -303,15 +317,18 @@ class ChatMainForm(Template):
         receives messages while main thread is running
         
         '''
-       
+        #creating event for disabling thread while event is not set
+        self.event = threading.Event()
         while not self.end:
             try:
                 mes = self.client.comSocket.recv(1024)
                 # http://lxml.de/tutorial.html
                 print mes + '*****'
-                self.root = etree.fromstring(mes)  
+                self.root = etree.fromstring(mes) 
+                
+                self.event.clear() 
                 self.process_message()
-               
+                self.event.set()
                 
             except:
                 
