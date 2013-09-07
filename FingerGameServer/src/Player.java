@@ -1,8 +1,11 @@
 import java.net.Socket;
 
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
+
 
 public class Player {
 	private String name;
+	@XStreamOmitField
 	private Socket socket;
 	private String gameName;
 	

@@ -140,6 +140,13 @@ class ClientHandler extends Thread {
             	
             	
             }
+            //START GAME
+            //****First try ****
+            else if(received.equals("Start game")){
+            	System.out.println(received);
+            	String xml = xstream.toXML(new ChatMessage("Start game"));
+            	broadcast(xml, getSocketVector(gameMap.get(player.getGameName())));
+            }
             //CHAT MESSAGE
             else if (xstream.fromXML(received) instanceof ChatMessage) {
 				
@@ -170,21 +177,14 @@ class ClientHandler extends Thread {
 					player.setGameName(selectedGame);
 	            	gameMap.get(selectedGame).add(player);
 	            	allUsers.remove(userSocket);
-	            	
+	            
 	            	ListOfPlayers players = new ListOfPlayers(getPlayerNames(gameMap.get(selectedGame)));
 	            	String XMLNames = xstream.toXML(players);
 	            	broadcast(XMLNames, getSocketVector(gameMap.get(selectedGame)));
 				}
-            	
-            	
-            	
-            	
-            	
-            	
-            	
-            	
 
 			}
+            
             
 //Repeat above until 'Bye' sent by client...
         } while (!received.equals("Bye"));
