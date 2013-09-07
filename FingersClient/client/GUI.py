@@ -15,6 +15,7 @@ import time
 from lxml import etree
 import traceback
 import threading
+import pygame
 
  
 class Template(Frame):
@@ -188,14 +189,20 @@ class ChatMainForm(Template):
         self.joinGameButton.place(x=50, y=230)
         
         #start created game
-        self.startGameButton = Button(self,text="Start game",width=15)
+        self.startGameButton = Button(self,text="Start game",width=15, command=self.send_game_start_message)
         self.startGameButton.place(x=50, y=270)
         
         #create new game
         self.createGameButton = Button(self,text="Create new game",width=15, command=self.create_new_game)
         self.createGameButton.place(x=50, y=270)
         
-       
+     
+    def send_game_start_message(self):
+        '''
+        Sends signal to server that game is starting
+        '''
+        
+        self.client.send_message("Start game")
         
     def send_join_message(self):
         '''
@@ -271,8 +278,23 @@ class ChatMainForm(Template):
          
         '''
           
+    def start_game(self,id):
         
-    
+        # Call this function so the Pygame library can initialize itself
+        pygame.init()
+        # Create an 800x600 sized screen
+        screen = pygame.display.set_mode([800, 600])
+        # This sets the name of the window
+        pygame.display.set_caption('Fingers')
+        clock = pygame.time.Clock()
+        done = False
+        while done == False:
+            clock.tick(10)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    done = True
+                    pygame.quit()
+        
     def process_message(self):
         '''
         
@@ -286,6 +308,11 @@ class ChatMainForm(Template):
             # if game is full we receive message and set shared object canJoin to false 
             if self.root[0].text.startswith('Unable to join'):
                 self.canJoin = False
+                
+            #trying to start game ****TO BE CHANGED***
+            if self.root[0].text.startswith('Start game'):
+                self.gameThread = thread.start_new_thread(self.start_game, (2,))
+                 
         elif messageType == "ListOfGames":
             #****Mora posebna metoda koja nema parametre jedino tako radi***
             self.list_all_games(self.gameList)
