@@ -16,8 +16,10 @@ from lxml import etree
 import traceback
 import threading
 import pygame
+from game import GameState
 
- 
+import sys
+
 class Template(Frame):
     '''
     Template for all gui classes
@@ -146,7 +148,10 @@ class ChatMainForm(Template):
         #send first message with name
         self.client.send_message(self.name)
         
-        self.parent = parent       
+        self.parent = parent  
+        
+        
+             
         self.initUI()
         
     def initUI(self):
@@ -280,20 +285,93 @@ class ChatMainForm(Template):
           
     def start_game(self,id):
         
-        # Call this function so the Pygame library can initialize itself
-        pygame.init()
-        # Create an 800x600 sized screen
-        screen = pygame.display.set_mode([800, 600])
-        # This sets the name of the window
-        pygame.display.set_caption('Fingers')
-        clock = pygame.time.Clock()
-        done = False
-        while done == False:
-            clock.tick(10)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    done = True
-                    pygame.quit()
+        try:
+            # Call this function so the Pygame library can initialize itself
+            pygame.init()
+            # Create an 800x600 sized screen
+            self.screen = pygame.display.set_mode([800, 600])
+            # This sets the name of the window
+            pygame.display.set_caption('Fingers')
+            clock = pygame.time.Clock()
+            done = False
+            firstClick = True
+            secondClick = False
+            # waits until process_message finish with game object   
+            self.gameStateEvent.wait()
+            ourField = self.game.playersList[self.game.ourIndex].field
+            nextField = None
+            if self.game.ourIndex + 1 == len(self.game.playersList):
+                nextField = self.game.playersList[0].field
+            else:
+                nextField = self.game.playersList[self.game.ourIndex + 1].field  
+            
+            hitting = None
+            hitted  = None
+            
+            while done == False:
+              
+                clock.tick(10)
+                
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        done = True
+                        pygame.quit()
+                    
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        x, y = event.pos
+                        # print x,y
+                        if self.client.comSocket.getsockname()[1] == self.game.playerTurn:
+                            if firstClick:
+                                # check if left hand picture is clicked
+                                if ourField.image1.get_rect(center=ourField.get_centers()[0]).collidepoint(x, y):
+                                    hitting = 'left'
+                                    firstClick = False
+                                    secondClick = True
+                                # check if right hand picture is clicked
+                                elif ourField.image2.get_rect(center=ourField.get_centers()[1]).collidepoint(x, y):
+                                    hitting = 'right'
+                                    firstClick = False
+                                    secondClick = True
+                            elif secondClick:
+                                # check if left hand picture is clicked
+                                if nextField.image1.get_rect(center=nextField.get_centers()[0]).collidepoint(x, y):
+                                    hitted = 'left'
+                                    secondClick = False
+                                    #this turn over reset firstClick and secondClick
+                                    firstClick = True
+                                    secondClick = False
+                                    
+                                    self.send_move_message(hitting, hitted)
+                                # check if right hand picture is clicked
+                                elif nextField.image2.get_rect(center=nextField.get_centers()[1]).collidepoint(x, y):
+                                    
+                                    hitted = 'right'
+                                    secondClick = False
+                                    #this turn over reset firstClick and secondClick
+                                    firstClick = True
+                                    secondClick = False
+                                    self.send_move_message(hitting, hitted)
+                                    
+                                    
+                                                                
+                       
+               
+                self.game.draw_state(self.screen)
+                pygame.display.flip()
+        except:
+            traceback.print_exc()
+            
+    def send_move_message(self,hitting,hitted):
+        '''
+        creates and sends move message
+        based on hitting and hitted hands
+        '''
+        xmlroot = etree.Element("Move")
+        etree.SubElement(xmlroot, "playerPlayed").text = str(self.game.playerTurn)
+        etree.SubElement(xmlroot, "hittingHand").text = hitting
+        etree.SubElement(xmlroot, "hittedHand").text = hitted
+        print etree.tostring(xmlroot)
+        self.client.send_message(etree.tostring(xmlroot))
         
     def process_message(self):
         '''
@@ -301,8 +379,11 @@ class ChatMainForm(Template):
         Recieve xml data as parameter and calls appropriate methods 
         for specific type of messges
         '''
+        
+      
+        
         messageType = self.root.tag
-        print '****', self.root[0].tag
+        
         if messageType == "ChatMessage":
             self.messageDispley.insert(END,self.root[0].text+'\n')
             # if game is full we receive message and set shared object canJoin to false 
@@ -311,13 +392,26 @@ class ChatMainForm(Template):
                 
             #trying to start game ****TO BE CHANGED***
             if self.root[0].text.startswith('Start game'):
+                
                 self.gameThread = thread.start_new_thread(self.start_game, (2,))
-                 
+                
         elif messageType == "ListOfGames":
             #****Mora posebna metoda koja nema parametre jedino tako radi***
             self.list_all_games(self.gameList)
         elif messageType == "ListOfPlayers":
             self.list_all_games(self.playersList)
+         
+        elif messageType == "GameState":
+            if self.initialGameState:
+                self.gameStateEvent.clear()
+                self.game = GameState(self.root,self.client.comSocket.getsockname()[1])
+                self.gameStateEvent.set()
+                self.initialGameState = False
+            else:
+                print 'Radi druga poruka'
+                self.game.changeGameState(self.root)
+                print str(self.game.playersList[self.game.ourIndex].fingersRight) + '->' + self.game.playersList[self.game.ourIndex].playerName
+                
             
         else:
             print "Neka greska"
@@ -346,6 +440,12 @@ class ChatMainForm(Template):
         '''
         #creating event for disabling thread while event is not set
         self.event = threading.Event()
+        #event must be defined here because in process_message we 
+        # create another event for every message, no good.
+        self.gameStateEvent = threading.Event()
+        
+        self.initialGameState = True
+        
         while not self.end:
             try:
                 mes = self.client.comSocket.recv(1024)
@@ -354,6 +454,7 @@ class ChatMainForm(Template):
                 self.root = etree.fromstring(mes) 
                 
                 self.event.clear() 
+                self.gameStateEvent.clear()
                 self.process_message()
                 self.event.set()
                 
