@@ -7,11 +7,18 @@ public class Player {
 	private String name;
 	@XStreamOmitField
 	private Socket socket;
+	private int socketNumber;
 	private String gameName;
+	private int fingersLeft;
+	private int fingersRight;
+	
 	
 	public Player(String name, Socket socket){
 		this.name = name;
 		this.socket = socket;
+		this.socketNumber = socket.getPort();
+		fingersLeft = 1;
+		fingersRight = 1;
 	}
 
 	/**
@@ -54,6 +61,30 @@ public class Player {
 	 */
 	public void setGameName(String gameName) {
 		this.gameName = gameName;
+	}
+	
+	public int getFingersLeft() {
+		return fingersLeft;
+	}
+
+	public void setFingersLeft(int fingersLeft) {
+		this.fingersLeft = fingersLeft;
+	}
+
+	public int getFingersRight() {
+		return fingersRight;
+	}
+
+	public void setFingersRight(int fingersRight) {
+		this.fingersRight = fingersRight;
+	}
+
+	public int getSocketNumber() {
+		return socketNumber;
+	}
+
+	public void setSocketNumber(int socketNumber) {
+		this.socketNumber = socketNumber;
 	}
 	
 }

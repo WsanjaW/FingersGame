@@ -14,7 +14,7 @@ public class FingerGameServer {
     private static final int PORT = 1234;
     private static Vector<Socket> allUsers;
     private static Map<String, Vector<Player>> gameMap;
-    
+    private static GameState gameState;
 
     public static void main(String[] args) throws IOException {
         System.out.println("\nOpening port...\n");
@@ -29,6 +29,7 @@ public class FingerGameServer {
         
         //Map of created games
         gameMap = new HashMap<String, Vector<Player>>();
+        gameState = new GameState();
         
         do {
 //Wait for client...
@@ -41,7 +42,7 @@ public class FingerGameServer {
             the Vector of all open sockets...
              */
             ClientHandler handler =
-                    new ClientHandler(userSocket, allUsers,gameMap);
+                    new ClientHandler(userSocket, allUsers,gameMap,gameState);
             handler.start();//As usual, this method calls run.
         } while (true);
     }
@@ -56,18 +57,21 @@ class ClientHandler extends Thread {
     private PrintWriter output;
     private XStream xstream;
     private Player player;
-    Map<String, Vector<Player>> gameMap;
+    private Map<String, Vector<Player>> gameMap;
+    private GameState gameState;
+    
     
 
     public ClientHandler(Socket chatSocket,
-            Vector<Socket> chatVector, Map<String, Vector<Player>> map) {
+            Vector<Socket> chatVector, Map<String, Vector<Player>> map,GameState gameState) {
 //Set up references to associated socket and Vector
 //of users...
         userSocket = chatSocket;
         allUsers = chatVector;
         gameMap = map; 
-       
+        this.gameState = gameState;
         xstream = new XStream(new StaxDriver());
+        xstream.processAnnotations(Player.class);
        
         try {
             input = new Scanner(userSocket.getInputStream());
@@ -85,7 +89,6 @@ class ClientHandler extends Thread {
 //of the new arrival...
         
         ChatMessage msg = new ChatMessage(chatName + " has entered the chatroom!");
-        xstream = new XStream(new StaxDriver());
         String xml = xstream.toXML(msg);
         
 		broadcast(xml,allUsers);
@@ -138,7 +141,6 @@ class ClientHandler extends Thread {
             	sendMessage(xstream.toXML(players),player.getSocket());
             	broadcast(createListOfGameMessage(),allUsers);
             	
-            	
             }
             //START GAME
             //****First try ****
@@ -146,6 +148,15 @@ class ClientHandler extends Thread {
             	System.out.println(received);
             	String xml = xstream.toXML(new ChatMessage("Start game"));
             	broadcast(xml, getSocketVector(gameMap.get(player.getGameName())));
+            	gameState.createGameState(false, userSocket.getPort(),gameMap.get(player.getGameName()));
+            	try {
+            		Thread.sleep(400);
+					broadcast(xstream.toXML(gameState),getSocketVector(gameMap.get(player.getGameName())));
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+            	
             }
             //CHAT MESSAGE
             else if (xstream.fromXML(received) instanceof ChatMessage) {
@@ -184,10 +195,17 @@ class ClientHandler extends Thread {
 				}
 
 			}
-            
+            //MOVE
+            else if(xstream.fromXML(received) instanceof Move){
+            	System.out.println(gameState);
+            	Move move = (Move)xstream.fromXML(received);
+            	System.out.println(received);
+            	gameState.changeGameState(move);
+            	broadcast(xstream.toXML(gameState),getSocketVector(gameMap.get(player.getGameName())));
+            }
             
 //Repeat above until 'Bye' sent by client...
-        } while (!received.equals("Bye"));
+        } while (!received.equals("Bye")); //TODO do something with this
         try {
             if (userSocket != null) {
                 System.out.println(
