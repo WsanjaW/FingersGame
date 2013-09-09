@@ -31,7 +31,30 @@ class Player():
         
     def draw_player(self,screen):
         
+        path = "D:\\ProjekiGit\\FingersGame\\FingersClient\\resources\\"
+        #set left hand picture
+        if self.fingersLeft == 1:
+            self.field.image1 = pygame.image.load(path + "finger1.png")
+        elif self.fingersLeft == 2:
+            self.field.image1 = pygame.image.load(path +"finger2.png")
+        elif self.fingersLeft == 3:
+            self.field.image1 = pygame.image.load(path +"finger3.png")
+        elif self.fingersLeft == 4:
+            self.field.image1 = pygame.image.load(path +"finger4.png")
+        elif self.fingersLeft == 5:
+            self.field.image1 = pygame.image.load(path +"finger5.png")
         
+        #set right hand picture
+        if self.fingersRight == 1:
+            self.field.image2 = pygame.image.load(path +"fingerright1.png")
+        elif self.fingersRight == 2:
+            self.field.image2 = pygame.image.load(path +"fingerright2.png")
+        elif self.fingersRight == 3:
+            self.field.image2 = pygame.image.load(path +"fingerright3.png")
+        elif self.fingersRight == 4:
+            self.field.image2 = pygame.image.load(path +"fingerright4.png")
+        elif self.fingersRight == 5:
+            self.field.image2 = pygame.image.load(path +"fingerright5.png")
         self.field.draw_field(screen)
         
         
@@ -86,10 +109,10 @@ class GameState():
     Class in which we create list of player in specific 
     game and assign them positions appropriate for every client's view
     '''    
-    POSITION_ONE    = ((275,500),(395,500),0)
-    POSITION_TWO    = ((680, 180),(680,300),90)
-    POSITION_THEREE = ((400,50),(450,50),180)
-    POSITION_FOUR   = ((50,300),(50,400),270)
+    POSITION_ONE    = ((275,485),(395,485),0)
+    POSITION_TWO    = ((680,300),(680, 180),90)
+    POSITION_THEREE = ((395,15),(275,15),180)
+    POSITION_FOUR   = ((15,180),(15,300),270)
     
     def __init__(self,xmlState, socketNumber):
         '''
@@ -166,8 +189,8 @@ class GameState():
         Also it saves order of player's turns
         '''
        
-        image1 = pygame.image.load("player.png")
-        image2 = pygame.image.load("player2.png")
+        image1 = pygame.image.load("D:\\ProjekiGit\\FingersGame\\FingersClient\\resources\\finger1.png")
+        image2 = pygame.image.load("D:\\ProjekiGit\\FingersGame\\FingersClient\\resources\\fingerright1.png")
       
         i = 0
         positions = [GameState.POSITION_ONE, GameState.POSITION_TWO, GameState.POSITION_THEREE, GameState.POSITION_FOUR]

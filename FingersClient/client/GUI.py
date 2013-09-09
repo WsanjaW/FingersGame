@@ -5,7 +5,7 @@ Created on Jul 5, 2013
 '''
 
 
-from Tkinter import Tk, Frame, Label, BOTH, Button,Listbox, StringVar, Entry, Text, LEFT, RIGHT, BOTTOM, E, N,CENTER,NW,W, S, END
+from Tkinter import Tk, Frame, Label, BOTH, Button,Listbox, StringVar, Entry, Text, LEFT, RIGHT, BOTTOM, E, N,CENTER,NW,W, S, END, DISABLED,NORMAL
 import tkMessageBox
 import tkFont
 #PROVERI zasto nece from!!!!!
@@ -205,8 +205,8 @@ class ChatMainForm(Template):
     def send_game_start_message(self):
         '''
         Sends signal to server that game is starting
-        '''
-        
+        '''        
+        self.startGameButton.config(state=DISABLED)
         self.client.send_message("Start game")
         
     def send_join_message(self):
@@ -219,7 +219,8 @@ class ChatMainForm(Template):
         self.canJoin = True
         
         items = self.gameList.curselection()  
-        
+        if items == tuple():
+            return
         # creating xml document to be send
         root2 = etree.Element("JoinGame")
         ge = etree.SubElement(root2, "game").text =  self.gameList.get(items[0])  
@@ -251,7 +252,8 @@ class ChatMainForm(Template):
         self.createGameButton.place_forget()
         self.gameList.place_forget()
         self.nameText2.place_forget()
-        
+        #can't start until somebody joins
+        self.startGameButton.config(state=DISABLED)
         self.client.send_message("Create game")
         
          
@@ -286,28 +288,35 @@ class ChatMainForm(Template):
     def start_game(self,id):
         
         try:
+            white = (255, 255, 255)
             # Call this function so the Pygame library can initialize itself
             pygame.init()
             # Create an 800x600 sized screen
             self.screen = pygame.display.set_mode([800, 600])
             # This sets the name of the window
-            pygame.display.set_caption('Fingers')
+            pygame.display.set_caption('Fingers game')
             clock = pygame.time.Clock()
             done = False
             firstClick = True
             secondClick = False
             # waits until process_message finish with game object   
             self.gameStateEvent.wait()
+            
+            
             ourField = self.game.playersList[self.game.ourIndex].field
             nextField = None
+            
             if self.game.ourIndex + 1 == len(self.game.playersList):
                 nextField = self.game.playersList[0].field
+                
             else:
-                nextField = self.game.playersList[self.game.ourIndex + 1].field  
+                nextField = self.game.playersList[self.game.ourIndex + 1].field 
+               
             
             hitting = None
             hitted  = None
-            
+          
+
             while done == False:
               
                 clock.tick(10)
@@ -355,9 +364,20 @@ class ChatMainForm(Template):
                                     
                                                                 
                        
+                #write text on screen
+                myfont = pygame.font.SysFont("Comic Sans MS", 20)
                
+                label1 = myfont.render("You: " + self.game.playersList[self.game.ourIndex].playerName, 1, white)
+                label2 = myfont.render("Players turn: " + self.game.playersList[self.game.find_index(self.game.playerTurn)].playerName, 1, white)
+                #refresh screen
+                self.screen.fill((0, 0, 0))
+                #add text
+                self.screen.blit(label1, (40, 450))
+                self.screen.blit(label2, (40, 480))       
+                #draw hands         
                 self.game.draw_state(self.screen)
                 pygame.display.flip()
+                
         except:
             traceback.print_exc()
             
@@ -399,7 +419,11 @@ class ChatMainForm(Template):
             #****Mora posebna metoda koja nema parametre jedino tako radi***
             self.list_all_games(self.gameList)
         elif messageType == "ListOfPlayers":
+            
             self.list_all_games(self.playersList)
+            #if there is more then tow players in game enable startGameButton
+            if len(self.playersList.get(0, END)) > 1:
+                self.startGameButton.config(state=NORMAL)
          
         elif messageType == "GameState":
             if self.initialGameState:
