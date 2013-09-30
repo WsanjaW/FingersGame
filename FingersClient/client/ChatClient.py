@@ -8,9 +8,9 @@ from socket import socket
 
 class ChatClient():
     '''
-    Main class for chat
+    Main class for game
     Handles network communication 
-    One thread for sending messages and one for receiving
+    
     '''
     
     def __init__(self):
@@ -27,6 +27,8 @@ class ChatClient():
         port = 1234
         try:               
             self.comSocket.connect((host, port))
+            print self.comSocket.getpeername()
+            print self.comSocket.getsockname()
             
         except:
             print 'Error'

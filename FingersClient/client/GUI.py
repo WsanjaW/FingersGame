@@ -219,6 +219,7 @@ class ChatMainForm(Template):
         self.canJoin = True
         
         items = self.gameList.curselection()  
+        #if nothing is selected
         if items == tuple():
             return
         # creating xml document to be send
@@ -237,12 +238,7 @@ class ChatMainForm(Template):
             self.gameList.place_forget()
             self.nameText2.place_forget()
             self.startGameButton.place_forget()
-        
-        
-        
-           
-        
-    
+                 
     def create_new_game(self):
         '''
         Hides 'create new game' and 'Join game'  buttons and 
@@ -252,6 +248,7 @@ class ChatMainForm(Template):
         self.createGameButton.place_forget()
         self.gameList.place_forget()
         self.nameText2.place_forget()
+        self.startGameButton.place(x=50, y=270)
         #can't start until somebody joins
         self.startGameButton.config(state=DISABLED)
         self.client.send_message("Create game")
@@ -278,13 +275,26 @@ class ChatMainForm(Template):
                      
         self.message.set('')   
         
-    def send_message(self):
-        '''
-        sends message to server
-        if message is 'Bye' ends program
-         
-        '''
-          
+    
+    def find_next_player_index(self,currentPlayerIndex):
+        index = currentPlayerIndex + 1
+        if index == len(self.game.playersList):
+            index = 0
+        
+        while index != currentPlayerIndex:
+            #print self.game.playersList[index].isOut
+            #print type(self.game.playersList[index].isOut)
+            if index ==  len(self.game.playersList):
+                index = 0
+            if str(self.game.playersList[index].isOut) == 'false':
+                #print 'aaaaaaaaa'
+                break
+            else:
+                index += 1;
+        #print index
+        return index
+            
+        
     def start_game(self,id):
         
         try:
@@ -301,76 +311,91 @@ class ChatMainForm(Template):
             secondClick = False
             # waits until process_message finish with game object   
             self.gameStateEvent.wait()
-            
+                     
             
             ourField = self.game.playersList[self.game.ourIndex].field
             nextField = None
-            
-            if self.game.ourIndex + 1 == len(self.game.playersList):
-                nextField = self.game.playersList[0].field
-                
-            else:
-                nextField = self.game.playersList[self.game.ourIndex + 1].field 
-               
+                         
             
             hitting = None
             hitted  = None
           
-
+            print "AAAAAAAAAAA"
             while done == False:
               
                 clock.tick(10)
-                
+                nextIndex = self.find_next_player_index(self.game.ourIndex)
+                nextField = self.game.playersList[nextIndex].field
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
-                        done = True
+                        #enable all filed for choosing game
+                      
+                        self.createGameButton.place(x=50, y=270)
+                        self.joinGameButton.place(x=50, y=230)
+                        self.nameText2.place(x=50,y=10)
+                        self.gameList.place(x=50, y=30)
+                        self.initialGameState = True
+                        self.game = None
+                        
+                        self.client.send_message("QUIT")
                         pygame.quit()
                     
                     if event.type == pygame.MOUSEBUTTONDOWN:
                         x, y = event.pos
-                        # print x,y
-                        if self.client.comSocket.getsockname()[1] == self.game.playerTurn:
-                            if firstClick:
-                                # check if left hand picture is clicked
-                                if ourField.image1.get_rect(center=ourField.get_centers()[0]).collidepoint(x, y):
-                                    hitting = 'left'
-                                    firstClick = False
-                                    secondClick = True
-                                # check if right hand picture is clicked
-                                elif ourField.image2.get_rect(center=ourField.get_centers()[1]).collidepoint(x, y):
-                                    hitting = 'right'
-                                    firstClick = False
-                                    secondClick = True
-                            elif secondClick:
-                                # check if left hand picture is clicked
-                                if nextField.image1.get_rect(center=nextField.get_centers()[0]).collidepoint(x, y):
-                                    hitted = 'left'
-                                    secondClick = False
-                                    #this turn over reset firstClick and secondClick
-                                    firstClick = True
-                                    secondClick = False
-                                    
-                                    self.send_move_message(hitting, hitted)
-                                # check if right hand picture is clicked
-                                elif nextField.image2.get_rect(center=nextField.get_centers()[1]).collidepoint(x, y):
-                                    
-                                    hitted = 'right'
-                                    secondClick = False
-                                    #this turn over reset firstClick and secondClick
-                                    firstClick = True
-                                    secondClick = False
-                                    self.send_move_message(hitting, hitted)
+                        # if game is over we can't play
+                       
+                        if self.game.gameOver == 'false':
+                        
+                            if self.client.comSocket.getsockname()[1] == self.game.playerTurn:
+                                if firstClick:
+                                    # check if left hand picture is clicked
+                                    if ourField.image1.get_rect(center=ourField.get_centers()[0]).collidepoint(x, y):
+                                        hitting = 'left'
+                                        firstClick = False
+                                        secondClick = True
+                                    # check if right hand picture is clicked
+                                    elif ourField.image2.get_rect(center=ourField.get_centers()[1]).collidepoint(x, y):
+                                        hitting = 'right'
+                                        firstClick = False
+                                        secondClick = True
+                                elif secondClick:
+                                    # check if left hand picture is clicked
+                                    if nextField.image1.get_rect(center=nextField.get_centers()[0]).collidepoint(x, y):
+                                        hitted = 'left'
+                                        secondClick = False
+                                        #this turn over reset firstClick and secondClick
+                                        firstClick = True
+                                        secondClick = False
+                                        
+                                        self.send_move_message(hitting, hitted)
+                                    # check if right hand picture is clicked
+                                    elif nextField.image2.get_rect(center=nextField.get_centers()[1]).collidepoint(x, y):
+                                        
+                                        hitted = 'right'
+                                        secondClick = False
+                                        #this turn over reset firstClick and secondClick
+                                        firstClick = True
+                                        secondClick = False
+                                        self.send_move_message(hitting, hitted)
                                     
                                     
                                                                 
                        
                 #write text on screen
                 myfont = pygame.font.SysFont("Comic Sans MS", 20)
-               
-                label1 = myfont.render("You: " + self.game.playersList[self.game.ourIndex].playerName, 1, white)
-                label2 = myfont.render("Players turn: " + self.game.playersList[self.game.find_index(self.game.playerTurn)].playerName, 1, white)
+                winnerFont = pygame.font.SysFont("Comic Sans MS", 36)
                 #refresh screen
                 self.screen.fill((0, 0, 0))
+                
+                if self.game.gameOver == 'true':
+                    if not self.all_out():
+                        labelWinner = winnerFont.render("**** Game over, somebody left :( *****", 1, white)
+                    else:
+                        labelWinner = winnerFont.render("*****Winner is " + self.return_winner_name() + " *****", 1, white)
+                    self.screen.blit(labelWinner, (180, 220))
+                label1 = myfont.render("You: " + self.game.playersList[self.game.ourIndex].playerName, 1, white)
+                label2 = myfont.render("Players turn: " + self.game.playersList[self.game.find_index(self.game.playerTurn)].playerName, 1, white)
+                
                 #add text
                 self.screen.blit(label1, (40, 450))
                 self.screen.blit(label2, (40, 480))       
@@ -381,6 +406,12 @@ class ChatMainForm(Template):
         except:
             traceback.print_exc()
             
+    
+    def all_out(self):
+        return len([x for x in self.game.playersList if x.isOut == 'false']) == 1
+    def return_winner_name(self):
+        return next(x.playerName for x in self.game.playersList if x.isOut == 'false')
+    
     def send_move_message(self,hitting,hitted):
         '''
         creates and sends move message
@@ -413,6 +444,7 @@ class ChatMainForm(Template):
             #trying to start game ****TO BE CHANGED***
             if self.root[0].text.startswith('Start game'):
                 
+                self.game = None
                 self.gameThread = thread.start_new_thread(self.start_game, (2,))
                 
         elif messageType == "ListOfGames":
@@ -450,7 +482,7 @@ class ChatMainForm(Template):
         print self.root[0]
         for el in iter(self.root[0]):
             lis.append(el.text)
-       
+        
         listBox.delete(0, END)
         for e in lis:
             #t = e.text

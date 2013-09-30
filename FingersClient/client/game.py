@@ -1,3 +1,4 @@
+
 '''
 Created on Sep 8, 2013
 
@@ -18,16 +19,18 @@ class Player():
         ''' 
         self.playerName = playerName
         self.socketNumber = socketNumber
+        self.isOut = 'false'
         self.fingersLeft = 1
         self.fingersRight = 1
         self.field = None
         
-    def change_state(self,fingersLeft,fingersRight):
+    def change_state(self,fingersLeft,fingersRight,isOut):
         '''
         Changes number of fingers
         '''
         self.fingersLeft = fingersLeft
         self.fingersRight = fingersRight
+        self.isOut = isOut
         
     def draw_player(self,screen):
         
@@ -41,8 +44,9 @@ class Player():
             self.field.image1 = pygame.image.load(path +"finger3.png")
         elif self.fingersLeft == 4:
             self.field.image1 = pygame.image.load(path +"finger4.png")
-        elif self.fingersLeft == 5:
-            self.field.image1 = pygame.image.load(path +"finger5.png")
+        elif self.fingersLeft == 0:
+            self.field.image1 = pygame.image.load(path +"finger0.png")
+        
         
         #set right hand picture
         if self.fingersRight == 1:
@@ -53,8 +57,8 @@ class Player():
             self.field.image2 = pygame.image.load(path +"fingerright3.png")
         elif self.fingersRight == 4:
             self.field.image2 = pygame.image.load(path +"fingerright4.png")
-        elif self.fingersRight == 5:
-            self.field.image2 = pygame.image.load(path +"fingerright5.png")
+        elif self.fingersRight == 0:
+            self.field.image2 = pygame.image.load(path +"fingerright0.png")
         self.field.draw_field(screen)
         
         
@@ -122,6 +126,7 @@ class GameState():
         player's socket and it is used as unique id.
         '''
         self.playersList = self.unpackXML(xmlState)
+        self.gameOver = xmlState[0].text
         self.ourIndex = self.find_index(socketNumber)
         self.newList = self.create_new_list()
         self.assign_field_positions()
@@ -133,12 +138,14 @@ class GameState():
         from xmlState
         '''
         self.playerTurn = int(xmlState[1].text)
+        self.gameOver = xmlState[0].text
         i = 0
         for el in iter(xmlState):
             if el.tag == 'players':
                 for elem in iter(el):
                     self.playersList[i].fingersLeft = int(elem[3].text)
                     self.playersList[i].fingersRight = int(elem[4].text)
+                    self.playersList[i].isOut = elem[5].text
                     i += 1
                                              
         
@@ -189,14 +196,14 @@ class GameState():
         Also it saves order of player's turns
         '''
        
-        image1 = pygame.image.load("D:\\ProjekiGit\\FingersGame\\FingersClient\\resources\\finger1.png")
-        image2 = pygame.image.load("D:\\ProjekiGit\\FingersGame\\FingersClient\\resources\\fingerright1.png")
+        #image1 = pygame.image.load("D:\\ProjekiGit\\FingersGame\\FingersClient\\resources\\finger1.png")
+        #image2 = pygame.image.load("D:\\ProjekiGit\\FingersGame\\FingersClient\\resources\\fingerright1.png")
       
         i = 0
         positions = [GameState.POSITION_ONE, GameState.POSITION_TWO, GameState.POSITION_THEREE, GameState.POSITION_FOUR]
         for elem in self.newList:
             #change playersLists field attribute with respect to order in new_list
-            self.playersList[self.find_index(elem.socketNumber)].field = Field(image1,image2,positions[i][0],positions[i][1],positions[i][2])
+            self.playersList[self.find_index(elem.socketNumber)].field = Field(None,None,positions[i][0],positions[i][1],positions[i][2])
             i+=1
                      
             
