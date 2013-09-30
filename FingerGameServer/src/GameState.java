@@ -1,3 +1,4 @@
+
 import java.util.Vector;
 
 
@@ -7,8 +8,9 @@ public class GameState {
 	private int playersTurn;
 	private Vector<Player> players;
 	
+	
 
-	public void createGameState(boolean gameOver, int playersTurn, Vector<Player> players) {
+	public GameState(boolean gameOver, int playersTurn, Vector<Player> players) {
 		this.gameOver = gameOver;
 		this.playersTurn = playersTurn;
 		this.players = players;
@@ -31,23 +33,59 @@ public class GameState {
 				if(m.getHittingHand().equals("right")) 
 					numFingers=players.get(i).getFingersRight();
 				hittingIndex = i;
-				hittedIndex = i+1;
-				if(hittedIndex == (players.size())){
-					hittedIndex = 0;
-				}
+				hittedIndex = findNextPlayer(hittingIndex);
 				break;
 			}
 		}
 		if(m.getHittedHand().equals("left")){
 			int numHittedFingers = players.get(hittedIndex).getFingersLeft();
-			players.get(hittedIndex).setFingersLeft(numFingers+numHittedFingers);
+			players.get(hittedIndex).setFingersLeft((numFingers+numHittedFingers)%5);
 			
 		}
 		else{
 			int numHittedFingers = players.get(hittedIndex).getFingersRight();
-			players.get(hittedIndex).setFingersRight(numFingers+numHittedFingers);
+			players.get(hittedIndex).setFingersRight((numFingers+numHittedFingers)%5);
 		}
-		playersTurn = players.get(hittedIndex).getSocketNumber();
+		players.get(hittedIndex).setOut(isPlayerOut(players.get(hittedIndex))); //check if hitted player is out of game
+		int nextPlayerToPlay = findNextPlayer(hittingIndex);
+		//check if game is over and sets gameOver attribute
+		// game is over if there is only one player left i.e nextPlayerToPlay == hittingIndex
+		gameOver = (nextPlayerToPlay == hittingIndex);
+		playersTurn = players.get(nextPlayerToPlay).getSocketNumber();
+	}
+	/**
+	 * 
+	 * If some player is out we must skip him
+	 * @param currentPlayerIndex
+	 * @return next active player in game
+	 */
+	public int findNextPlayer(int currentPlayerIndex){
+		int index = currentPlayerIndex + 1;
+		if(index == (players.size())){
+			index = 0;
+		}
+		while(index != currentPlayerIndex){
+			if(index == (players.size())){
+				index = 0;
+			}
+			if(!players.get(index).isOut()){
+				break;
+			}
+			else{
+				index++;
+			}
+		}
+		return index;
+	}
+	/**
+	 * 
+	 * @param player
+	 * check whether player has no fingers left and set paramater isOut
+	 * 
+	 */
+	public boolean isPlayerOut(Player player){
+		return player.getFingersLeft() == 0 && player.getFingersRight() == 0;
+			
 	}
 	/**
 	 * @return the gameOver

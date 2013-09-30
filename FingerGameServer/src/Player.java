@@ -11,6 +11,7 @@ public class Player {
 	private String gameName;
 	private int fingersLeft;
 	private int fingersRight;
+	private boolean isOut;
 	
 	
 	public Player(String name, Socket socket){
@@ -19,6 +20,7 @@ public class Player {
 		this.socketNumber = socket.getPort();
 		fingersLeft = 1;
 		fingersRight = 1;
+		this.isOut = false;
 	}
 
 	/**
@@ -63,6 +65,7 @@ public class Player {
 		this.gameName = gameName;
 	}
 	
+
 	public int getFingersLeft() {
 		return fingersLeft;
 	}
@@ -85,6 +88,14 @@ public class Player {
 
 	public void setSocketNumber(int socketNumber) {
 		this.socketNumber = socketNumber;
+	}
+
+	public boolean isOut() {
+		return isOut;
+	}
+
+	public void setOut(boolean isOut) {
+		this.isOut = isOut;
 	}
 	
 }

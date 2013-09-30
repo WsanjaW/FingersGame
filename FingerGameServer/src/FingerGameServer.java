@@ -14,7 +14,7 @@ public class FingerGameServer {
     private static final int PORT = 1234;
     private static Vector<Socket> allUsers;
     private static Map<String, Vector<Player>> gameMap;
-    private static GameState gameState;
+    private static Map<String,GameState> gameStateMap;
 
     public static void main(String[] args) throws IOException {
         System.out.println("\nOpening port...\n");
@@ -29,7 +29,7 @@ public class FingerGameServer {
         
         //Map of created games
         gameMap = new HashMap<String, Vector<Player>>();
-        gameState = new GameState();
+        gameStateMap = new HashMap<String, GameState>();
         
         do {
 //Wait for client...
@@ -42,7 +42,7 @@ public class FingerGameServer {
             the Vector of all open sockets...
              */
             ClientHandler handler =
-                    new ClientHandler(userSocket, allUsers,gameMap,gameState);
+                    new ClientHandler(userSocket, allUsers,gameMap,gameStateMap);
             handler.start();//As usual, this method calls run.
         } while (true);
     }
@@ -58,18 +58,18 @@ class ClientHandler extends Thread {
     private XStream xstream;
     private Player player;
     private Map<String, Vector<Player>> gameMap;
-    private GameState gameState;
+    private Map<String,GameState> gameStateMap;
     
     
 
     public ClientHandler(Socket chatSocket,
-            Vector<Socket> chatVector, Map<String, Vector<Player>> map,GameState gameState) {
+            Vector<Socket> chatVector, Map<String, Vector<Player>> map,Map<String,GameState> gameStateMap) {
 //Set up references to associated socket and Vector
 //of users...
         userSocket = chatSocket;
         allUsers = chatVector;
         gameMap = map; 
-        this.gameState = gameState;
+        this.gameStateMap = gameStateMap;
         xstream = new XStream(new StaxDriver());
         xstream.processAnnotations(Player.class);
        
@@ -140,24 +140,67 @@ class ClientHandler extends Thread {
             	ListOfPlayers players = new ListOfPlayers(getPlayerNames(gameMap.get(gameName)));
             	sendMessage(xstream.toXML(players),player.getSocket());
             	broadcast(createListOfGameMessage(),allUsers);
-            	
+
             }
             //START GAME
             //****First try ****
             else if(received.equals("Start game")){
+            	System.out.println("Nova igra startovana");
+            	GameState gameState = new GameState(false, userSocket.getPort(),gameMap.get(player.getGameName()));//creates game state 
             	System.out.println(received);
+            	System.out.println(player.getGameName());
             	String xml = xstream.toXML(new ChatMessage("Start game"));
             	broadcast(xml, getSocketVector(gameMap.get(player.getGameName())));
-            	gameState.createGameState(false, userSocket.getPort(),gameMap.get(player.getGameName()));
+            	gameStateMap.put(player.getGameName(),gameState);//puts new game state in map so everyone can see it
             	try {
             		Thread.sleep(400);
-					broadcast(xstream.toXML(gameState),getSocketVector(gameMap.get(player.getGameName())));
+            		System.out.println(xstream.toXML(gameStateMap.get(player.getGameName())));
+					broadcast(xstream.toXML(gameStateMap.get(player.getGameName())),getSocketVector(gameMap.get(player.getGameName())));
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
             	
             }
+            //QUIT
+            else if (received.equals("QUIT")) {
+            	
+            	//reset fileds for player who left 
+				gameMap.get(player.getGameName()).remove(player);
+				//if all players left remove game from game map
+				if (gameMap.get(player.getGameName()).size() == 0) {
+					System.out.println(gameMap.remove(player.getGameName()).toString());
+					
+				}
+				//game is over, send new state to other players
+				gameStateMap.get(player.getGameName()).setGameOver(true);
+				
+				//if somebody left in game send new state
+				if (gameMap.get(player.getGameName()) != null) {
+					broadcast(xstream.toXML(gameStateMap.get(player.getGameName())),getSocketVector(gameMap.get(player.getGameName())));
+				}
+				
+				
+				//reset fileds for player who left 
+				player.setFingersLeft(1);
+				player.setFingersRight(1);
+				allUsers.add(player.getSocket());
+				player.setGameName(null);
+		        ChatMessage msg = new ChatMessage(chatName + " has entered the chatroom!");
+		        String xml = xstream.toXML(msg);
+		        //send him initial massages
+				broadcast(xml,allUsers);
+				try {
+					Thread.sleep(400);
+				} catch (InterruptedException e) {
+					
+					e.printStackTrace();
+				}
+				broadcast(createListOfGameMessage(),allUsers);
+				
+				
+				
+			}
             //CHAT MESSAGE
             else if (xstream.fromXML(received) instanceof ChatMessage) {
 				
@@ -168,6 +211,7 @@ class ClientHandler extends Thread {
 					broadcast(xml,allUsers); //DONE check whether user belongs to allUsers or in gameMap
 				}
 				else{
+					System.out.println(player.getGameName());
 					broadcast(xml,getSocketVector(gameMap.get(player.getGameName())));
 				}
 				
@@ -197,11 +241,10 @@ class ClientHandler extends Thread {
 			}
             //MOVE
             else if(xstream.fromXML(received) instanceof Move){
-            	System.out.println(gameState);
             	Move move = (Move)xstream.fromXML(received);
             	System.out.println(received);
-            	gameState.changeGameState(move);
-            	broadcast(xstream.toXML(gameState),getSocketVector(gameMap.get(player.getGameName())));
+            	gameStateMap.get(player.getGameName()).changeGameState(move);
+            	broadcast(xstream.toXML(gameStateMap.get(player.getGameName())),getSocketVector(gameMap.get(player.getGameName())));
             }
             
 //Repeat above until 'Bye' sent by client...
