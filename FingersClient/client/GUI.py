@@ -116,6 +116,8 @@ class ChatNetworkForm(Template):
             
         
         
+
+
 class ChatMainForm(Template):
     '''
     Class for graphic presentation of chat client.
@@ -227,10 +229,11 @@ class ChatMainForm(Template):
         ge = etree.SubElement(root2, "game").text =  self.gameList.get(items[0])  
         
         self.client.send_message(etree.tostring(root2))
-        
+        #join massage send 
+        self.joinEvent.clear()
         #first receive_server_messages thread needs to finish processing message from server        
-        self.event.wait()
-        
+        self.joinEvent.wait()
+        print "BUHA"
         #if we don't receive message from server we hide fields 
         if self.canJoin:
             self.joinGameButton.place_forget()
@@ -277,6 +280,9 @@ class ChatMainForm(Template):
         
     
     def find_next_player_index(self,currentPlayerIndex):
+        '''
+        finds index of next player on turn in playersList
+        '''
         index = currentPlayerIndex + 1
         if index == len(self.game.playersList):
             index = 0
@@ -294,7 +300,7 @@ class ChatMainForm(Template):
         #print index
         return index
             
-        
+   
     def start_game(self,id):
         
         try:
@@ -312,8 +318,8 @@ class ChatMainForm(Template):
             # waits until process_message finish with game object   
             self.gameStateEvent.wait()
                      
-            
-            ourField = self.game.playersList[self.game.ourIndex].field
+            currentPlayer = self.game.playersList[self.game.ourIndex];
+            ourField = currentPlayer.field
             nextField = None
                          
             
@@ -325,7 +331,8 @@ class ChatMainForm(Template):
               
                 clock.tick(10)
                 nextIndex = self.find_next_player_index(self.game.ourIndex)
-                nextField = self.game.playersList[nextIndex].field
+                nextPlayer = self.game.playersList[nextIndex]
+                nextField = nextPlayer.field
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
                         #enable all filed for choosing game
@@ -360,7 +367,7 @@ class ChatMainForm(Template):
                                         secondClick = True
                                 elif secondClick:
                                     # check if left hand picture is clicked
-                                    if nextField.image1.get_rect(center=nextField.get_centers()[0]).collidepoint(x, y):
+                                    if nextField.image1.get_rect(center=nextField.get_centers()[0]).collidepoint(x, y) and nextPlayer.fingersLeft != 0:
                                         hitted = 'left'
                                         secondClick = False
                                         #this turn over reset firstClick and secondClick
@@ -369,7 +376,7 @@ class ChatMainForm(Template):
                                         
                                         self.send_move_message(hitting, hitted)
                                     # check if right hand picture is clicked
-                                    elif nextField.image2.get_rect(center=nextField.get_centers()[1]).collidepoint(x, y):
+                                    elif nextField.image2.get_rect(center=nextField.get_centers()[1]).collidepoint(x, y) and nextPlayer.fingersRight != 0:
                                         
                                         hitted = 'right'
                                         secondClick = False
@@ -377,6 +384,33 @@ class ChatMainForm(Template):
                                         firstClick = True
                                         secondClick = False
                                         self.send_move_message(hitting, hitted)
+                                    #check if second hand is from same player and if separation is possible
+                                    elif ourField.image1.get_rect(center=ourField.get_centers()[0]).collidepoint(x, y):
+                                                                            
+                                        if currentPlayer.fingersRight == 0 and (currentPlayer.fingersLeft == 2 or currentPlayer.fingersLeft == 4):                                       
+                                            hitted = 'separation'
+                                            secondClick = False 
+                                            print "SANJA"
+                                            #this turn over reset firstClick and secondClick
+                                            firstClick = True
+                                            secondClick = False
+                                            self.send_move_message(hitting, hitted)
+                                        else:
+                                            firstClick = True
+                                    elif ourField.image2.get_rect(center=ourField.get_centers()[1]).collidepoint(x, y):
+                                        print "BUHA1"
+                                        print currentPlayer.fingersLeft
+                                        
+                                        if currentPlayer.fingersLeft == 0 and (currentPlayer.fingersRight== 2 or currentPlayer.fingersRight == 4):                                       
+                                            print "SANJA"
+                                            hitted = 'separation'
+                                            secondClick = False 
+                                            #this turn over reset firstClick and secondClick
+                                            firstClick = True
+                                            secondClick = False
+                                            self.send_move_message(hitting, hitted)
+                                        else:
+                                            firstClick = True
                                     
                                     
                                                                 
@@ -389,10 +423,13 @@ class ChatMainForm(Template):
                 
                 if self.game.gameOver == 'true':
                     if not self.all_out():
-                        labelWinner = winnerFont.render("**** Game over, somebody left :( *****", 1, white)
+                        labelWinner = winnerFont.render("**** Game over ****", 1, white)
+                        labelWinner2 = winnerFont.render("**** somebody left :( *****", 1, white)
                     else:
                         labelWinner = winnerFont.render("*****Winner is " + self.return_winner_name() + " *****", 1, white)
+                        labelWinner2 = winnerFont.render(" ", 1, white)
                     self.screen.blit(labelWinner, (180, 220))
+                    self.screen.blit(labelWinner2, (180, 250))
                 label1 = myfont.render("You: " + self.game.playersList[self.game.ourIndex].playerName, 1, white)
                 label2 = myfont.render("Players turn: " + self.game.playersList[self.game.find_index(self.game.playerTurn)].playerName, 1, white)
                 
@@ -408,8 +445,16 @@ class ChatMainForm(Template):
             
     
     def all_out(self):
+        '''
+        checks if only one player
+        is left in game
+        '''
         return len([x for x in self.game.playersList if x.isOut == 'false']) == 1
+    
     def return_winner_name(self):
+        '''
+        returns winers name
+        '''
         return next(x.playerName for x in self.game.playersList if x.isOut == 'false')
     
     def send_move_message(self,hitting,hitted):
@@ -430,20 +475,20 @@ class ChatMainForm(Template):
         Recieve xml data as parameter and calls appropriate methods 
         for specific type of messges
         '''
-        
-      
-        
+                
         messageType = self.root.tag
         
         if messageType == "ChatMessage":
             self.messageDispley.insert(END,self.root[0].text+'\n')
             # if game is full we receive message and set shared object canJoin to false 
             if self.root[0].text.startswith('Unable to join'):
+                print "SANJA"
                 self.canJoin = False
+                #unable to join massage processed so enable joinEvent, 
+                self.joinEvent.set()
                 
             #trying to start game ****TO BE CHANGED***
             if self.root[0].text.startswith('Start game'):
-                
                 self.game = None
                 self.gameThread = thread.start_new_thread(self.start_game, (2,))
                 
@@ -464,13 +509,13 @@ class ChatMainForm(Template):
                 self.gameStateEvent.set()
                 self.initialGameState = False
             else:
-                print 'Radi druga poruka'
+               
                 self.game.changeGameState(self.root)
                 print str(self.game.playersList[self.game.ourIndex].fingersRight) + '->' + self.game.playersList[self.game.ourIndex].playerName
                 
             
         else:
-            print "Neka greska"
+            print "Error while processing massages"
         
     def list_all_games(self,listBox):
         '''
@@ -494,11 +539,12 @@ class ChatMainForm(Template):
         receives messages while main thread is running
         
         '''
-        #creating event for disabling thread while event is not set
-        self.event = threading.Event()
+        
         #event must be defined here because in process_message we 
         # create another event for every message, no good.
         self.gameStateEvent = threading.Event()
+        #creating event for disabling thread while event is not set
+        self.joinEvent = threading.Event()
         
         self.initialGameState = True
         
@@ -509,10 +555,11 @@ class ChatMainForm(Template):
                 print mes + '*****'
                 self.root = etree.fromstring(mes) 
                 
-                self.event.clear() 
                 self.gameStateEvent.clear()
                 self.process_message()
-                self.event.set()
+                #massage processed so enable joinEvent,
+                self.joinEvent.set()
+              
                 
             except:
                 

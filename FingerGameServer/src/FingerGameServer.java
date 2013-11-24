@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.StaxDriver;
 
@@ -62,52 +63,56 @@ class ClientHandler extends Thread {
     
     
 
-    public ClientHandler(Socket chatSocket,
-            Vector<Socket> chatVector, Map<String, Vector<Player>> map,Map<String,GameState> gameStateMap) {
-//Set up references to associated socket and Vector
-//of users...
-        userSocket = chatSocket;
-        allUsers = chatVector;
-        gameMap = map; 
-        this.gameStateMap = gameStateMap;
-        xstream = new XStream(new StaxDriver());
-        xstream.processAnnotations(Player.class);
-       
-        try {
-            input = new Scanner(userSocket.getInputStream());
-            output = new PrintWriter(
-                    userSocket.getOutputStream(), true);
-        } catch (IOException ioEx) {
-            ioEx.printStackTrace();
-        }
-//Connecting user must send chat nickname as first
-//transmission...
-        chatName = input.nextLine();
-        player = new Player(chatName, userSocket);
-        allUsers.add(userSocket);
-//Notify all people in chatroom (including new arrival)
-//of the new arrival...
-        
-        ChatMessage msg = new ChatMessage(chatName + " has entered the chatroom!");
-        String xml = xstream.toXML(msg);
-        
-		broadcast(xml,allUsers);
+	public ClientHandler(Socket chatSocket, Vector<Socket> chatVector,
+			Map<String, Vector<Player>> map, Map<String, GameState> gameStateMap) {
+		
+		// Set up references to associated socket and Vector of users...
+		userSocket = chatSocket;
+		allUsers = chatVector;
+		gameMap = map;
+		this.gameStateMap = gameStateMap;
+		xstream = new XStream(new StaxDriver());
+		xstream.processAnnotations(Player.class);
+
+		try {
+			input = new Scanner(userSocket.getInputStream());
+			output = new PrintWriter(userSocket.getOutputStream(), true);
+		} catch (IOException ioEx) {
+			ioEx.printStackTrace();
+		}
+		// Connecting user must send chat nickname as first transmission...
+		chatName = input.nextLine();
+		player = new Player(chatName, userSocket);
+		allUsers.add(userSocket);
+		// Notify all people in chatroom (including new arrival)
+		// of the new arrival...
+		
+		ChatMessage msg = new ChatMessage(chatName
+				+ " has entered the chatroom!");
+		String xml = xstream.toXML(msg);
+
+		broadcast(xml, allUsers);
 		try {
 			Thread.sleep(400);
 		} catch (InterruptedException e) {
-			
+
 			e.printStackTrace();
 		}
-		broadcast(createListOfGameMessage(),allUsers);
-		
-    }
+		broadcast(createListOfGameMessage(), allUsers);
+
+	}
 
     public void run() {
         String received;
         do {
-        	//Accept message from client on
+        	//Accept message from client on 
         	//the socket's input stream...
-            received = input.nextLine();
+        	try {
+        		received = input.nextLine();
+			} catch (NoSuchElementException e) {
+				break;
+			}
+            
 
             //CREATE GAME
             //Adds new game into gameMap and broadcast new state 
@@ -143,8 +148,8 @@ class ClientHandler extends Thread {
 
             }
             //START GAME
-            //****First try ****
             else if(received.equals("Start game")){
+    
             	System.out.println("Nova igra startovana");
             	GameState gameState = new GameState(false, userSocket.getPort(),gameMap.get(player.getGameName()));//creates game state 
             	System.out.println(received);
@@ -167,17 +172,27 @@ class ClientHandler extends Thread {
             	
             	//reset fileds for player who left 
 				gameMap.get(player.getGameName()).remove(player);
+				
 				//if all players left remove game from game map
 				if (gameMap.get(player.getGameName()).size() == 0) {
-					System.out.println(gameMap.remove(player.getGameName()).toString());
-					
+					System.out.println("IZASLI SVI");
+					gameMap.remove(player.getGameName());
+					gameStateMap.remove(player.getGameName());
 				}
-				//game is over, send new state to other players
-				gameStateMap.get(player.getGameName()).setGameOver(true);
-				
-				//if somebody left in game send new state
-				if (gameMap.get(player.getGameName()) != null) {
-					broadcast(xstream.toXML(gameStateMap.get(player.getGameName())),getSocketVector(gameMap.get(player.getGameName())));
+				else if(!player.isOut()) {
+					// game is over, send new state to other players
+					gameStateMap.get(player.getGameName()).setGameOver(true);
+
+					// if somebody left in game send new state
+					if (gameMap.get(player.getGameName()) != null) {
+						broadcast(xstream.toXML(gameStateMap.get(player
+								.getGameName())),
+								getSocketVector(gameMap.get(player
+										.getGameName())));
+					}
+				}
+				else {
+					
 				}
 				
 				
@@ -207,6 +222,7 @@ class ClientHandler extends Thread {
             	ChatMessage newMesg = (ChatMessage)xstream.fromXML(received);
 				newMesg.setMessage(chatName+": "+newMesg.getMessage());
 				String xml = xstream.toXML(newMesg);
+				System.out.println(newMesg);
 				if(player.getGameName() == null){
 					broadcast(xml,allUsers); //DONE check whether user belongs to allUsers or in gameMap
 				}
@@ -221,14 +237,15 @@ class ClientHandler extends Thread {
             	
             	JoinGame joinMessage = (JoinGame)xstream.fromXML(received);
             	String selectedGame = joinMessage.getGame();
-            	//checks if there is less than four players in selected game
-            	if (gameMap.get(selectedGame).size() == 4) {
+            	//checks if there is less than four players in selected game or if game already started
+            	if (gameMap.get(selectedGame).size() == 4 || gameStateMap.containsKey(selectedGame)) {
             		
             		//if game is full send message 
             		ChatMessage msg = new ChatMessage("Unable to join, game is full.");
             		sendMessage(xstream.toXML(msg), player.getSocket());
 					
 				} else {
+					
 					player.setGameName(selectedGame);
 	            	gameMap.get(selectedGame).add(player);
 	            	allUsers.remove(userSocket);
@@ -247,19 +264,20 @@ class ClientHandler extends Thread {
             	broadcast(xstream.toXML(gameStateMap.get(player.getGameName())),getSocketVector(gameMap.get(player.getGameName())));
             }
             
-//Repeat above until 'Bye' sent by client...
-        } while (!received.equals("Bye")); //TODO do something with this
-        try {
-            if (userSocket != null) {
-                System.out.println(
-                        "Closing down connection...");
-                userSocket.close();
-            }
-        } catch (IOException ioEx) {
-            System.out.println("Unable to disconnect!");
+            //Repeat above until 'Bye' sent by client...
         }
-        allUsers.remove(userSocket);
-        broadcast(chatName +"has left the chatroom.",allUsers);
+        while (!received.equals("Bye") || userSocket == null); //TODO do something with this
+		
+        try {
+			if (userSocket != null) {
+				System.out.println("Closing down connection...");
+				userSocket.close();
+			}
+		} catch (IOException ioEx) {
+			System.out.println("Unable to disconnect!");
+		}
+		allUsers.remove(userSocket);
+		broadcast(xstream.toXML(new ChatMessage(chatName + " has left the chatroom.")), allUsers);
     }
     
    
@@ -296,6 +314,7 @@ class ClientHandler extends Thread {
             }
         }
     }
+    
     //sends message to one user
     public void sendMessage(String mes, Socket user){
     	try {
@@ -307,6 +326,7 @@ class ClientHandler extends Thread {
             ioEx.printStackTrace();
         }
     }
+    
     //from gameMap creates list of game names
     public String createListOfGameMessage(){
     	

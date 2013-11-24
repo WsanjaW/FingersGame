@@ -34,8 +34,10 @@ class ChatClient():
             print 'Error'
     
     def send_message(self,mess):
-        self.comSocket.send(str(mess)+'\n')
-            
+        try:
+            self.comSocket.send(str(mess)+'\n')
+        except:
+            print 'Unable to send message'
  
         
         

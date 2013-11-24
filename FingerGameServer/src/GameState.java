@@ -1,4 +1,5 @@
 
+
 import java.util.Vector;
 
 
@@ -14,6 +15,9 @@ public class GameState {
 		this.gameOver = gameOver;
 		this.playersTurn = playersTurn;
 		this.players = players;
+		for (Player player : this.players) {
+			player.setOut(false);
+		}
 	}
 	/**
 	 * 
@@ -22,21 +26,38 @@ public class GameState {
 	 * @param m current move in game
 	 * TODO Check if game is over.
 	 */
-	public void changeGameState(Move m){
+	public void changeGameState(Move m) {
+		
 		int numFingers = 0;
 		int hittingIndex = -1;
 		int hittedIndex = -1;
 		for (int i=0;i<players.size();i++) {
 			if(players.get(i).getSocketNumber() == m.getPlayerPlayed()){
-				if(m.getHittingHand().equals("left")) 
+				if(m.getHittingHand().equals("left")) {
 					numFingers=players.get(i).getFingersLeft();
-				if(m.getHittingHand().equals("right")) 
+					//handle separation case
+					if (m.getHittedHand().equals("separation")) {
+						int numHittedFingers = players.get(i).getFingersRight();
+						players.get(i).setFingersLeft(numHittedFingers/2);
+						players.get(i).setFingersRight(numHittedFingers/2);
+					}
+				}
+				if(m.getHittingHand().equals("right")){ 
 					numFingers=players.get(i).getFingersRight();
+					//handle separation case
+					if (m.getHittedHand().equals("separation")) {
+						int numHittedFingers = players.get(i).getFingersLeft();
+						players.get(i).setFingersLeft(numHittedFingers/2);
+						players.get(i).setFingersRight(numHittedFingers/2);
+					}
+				}
 				hittingIndex = i;
 				hittedIndex = findNextPlayer(hittingIndex);
 				break;
 			}
 		}
+		
+	
 		if(m.getHittedHand().equals("left")){
 			int numHittedFingers = players.get(hittedIndex).getFingersLeft();
 			players.get(hittedIndex).setFingersLeft((numFingers+numHittedFingers)%5);

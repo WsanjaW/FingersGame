@@ -1,4 +1,6 @@
 
+
+
 public class JoinGame {
 	
 	private String game;
